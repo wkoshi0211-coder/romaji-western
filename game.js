@@ -111,6 +111,8 @@ function reset() {
   $("#hint").textContent="ヒント";
   stopAudio();
   state = null;
+  game.removeAttribute("data-finger-guide");
+  $("#hint").hidden = false;
   area.replaceChildren();
   weapon.hidden = true;
   keyboard.hidden = true;
@@ -126,11 +128,14 @@ $("#home").onclick = menu;
 
 function practiceMenu() {
   reset(); setScene("setup");
-  screen.innerHTML = '<div class="panel"><h1>練習モード</h1><p>練習する行を選ぼう。１回に30文字打てます。</p><div class="choices rows"></div></div>';
+  screen.innerHTML = '<div class="panel"><h1>練習モード</h1><p>練習する行を選ぼう。１回に30文字打てます。</p><label class="guide-option"><input id="finger-setting" type="checkbox"> 指の配置を表示</label><div class="choices rows"></div></div>';
+  const guideSetting = $("#finger-setting");
+  guideSetting.checked = storage.get("romaji-finger-guide", "1") === "1";
+  guideSetting.onchange = () => storage.set("romaji-finger-guide", guideSetting.checked ? "1" : "0");
   for (const [label, symbols] of rowData) {
     const button = document.createElement("button");
     button.textContent = label;
-    button.onclick = () => startPractice(label, symbols.includes(" ") ? symbols.split(" ") : [...symbols]);
+    button.onclick = () => startPractice(label, symbols.includes(" ") ? symbols.split(" ") : [...symbols], guideSetting.checked);
     $(".rows").append(button);
   }
 }
@@ -155,11 +160,14 @@ function battleMenu() {
 function session(mode, config) {
   reset(); setScene(mode);
   state = {config, wave:0, total:0, targets:[], active:null, pending:"", hint:null, picking:false, elapsed:0, waiting:false, skipN:null};
+  const showGuide = mode === "practice" && config.showGuide;
+  game.toggleAttribute("data-finger-guide", showGuide);
+  $("#hint").hidden = showGuide;
   weapon.hidden = false;
   previousTime = performance.now();
   nextWave();
 }
-function startPractice(label, pool) { session("practice", {label,pool}); }
+function startPractice(label, pool, showGuide) { session("practice", {label,pool,showGuide}); }
 function startBattle(includeAdvanced) {
   session("battle", {includeAdvanced, words:battleWords(includeAdvanced), mobs:shuffle(names.map((_,i)=>i+1)).slice(0,battleRounds)});
 }
@@ -187,7 +195,9 @@ function nextWave() {
   area.replaceChildren();
   if (scene === "practice") {
     const pool = state.config.pool;
-    state.targets=shuffle(pool).slice(0,Math.min(pool.length,3,30-state.total)).map(word => track(word,null));
+    const previous = state.targets[0]?.word;
+    const choices = pool.length > 1 ? pool.filter(word => word !== previous) : pool;
+    state.targets = [track(choices[Math.floor(Math.random() * choices.length)], null)];
     status.textContent = state.config.label + "　" + state.total + " / 30";
   } else {
     const round=state.wave-1;
@@ -196,6 +206,7 @@ function nextWave() {
     play("moan");
   }
   state.targets.forEach(addTarget);
+  refreshHint();
   positionTargets();
 }
 function positionTargets() {
@@ -203,7 +214,7 @@ function positionTargets() {
   state.targets.forEach((target,i) => {
     let x,y,width;
     if (scene === "practice") {
-      x=50+(i-(state.targets.length-1)/2)*22; y=62;
+      x=50; y=state.config.showGuide ? 56 : 62;
       width="clamp(4rem, 17vw, 13rem)";
     } else {
       x=50+Math.sin(state.elapsed*.009+i)*(.34+.75*progress);
@@ -254,10 +265,6 @@ function drawKeys(value) {
   keyboard.hidden = false;
   keyboard.replaceChildren();
   keyboard.setAttribute("aria-label", "次に押すキー " + value.toUpperCase());
-  if (scene === "practice") {
-    keyboard.innerHTML = fingerDiagram(value);
-    return;
-  }
   for (const row of keyboardRows.concat(value==="'" ? ["'"] : [])) {
     const line=document.createElement("div"); line.className="keyrow";
     for (const key of row) {
@@ -269,14 +276,25 @@ function drawKeys(value) {
   }
 }
 function refreshHint() {
-  if (!state?.hint) { keyboard.hidden=true; return; }
-  const target=state.hint;
-  const value=spellings(target).find(form=>form.startsWith(state.pending));
-  if (value && value[state.pending.length]) drawKeys(value[state.pending.length]);
+  const persistent = scene === "practice" && state?.config.showGuide;
+  const target = persistent ? state.targets[0] : state?.hint;
+  if (!target) { keyboard.hidden = true; return; }
+  if (target.done) return;
+  const form = spellings(target).find(value => value.startsWith(state.pending));
+  const key = form?.[state.pending.length];
+  if (!key) return;
+  if (persistent) {
+    keyboard.hidden = false;
+    keyboard.innerHTML = fingerDiagram(key);
+  } else {
+    drawKeys(key);
+  }
 }
 function closeHint() {
   state.hint=null; state.picking=false;
-  keyboard.hidden=true; keyboard.replaceChildren();
+  if (!(scene === "practice" && state.config.showGuide)) {
+    keyboard.hidden = true; keyboard.replaceChildren();
+  }
   $("#hint").textContent="ヒント";
 }
 function displayHint(target) {
@@ -371,7 +389,7 @@ window.addEventListener("keydown", event => {
 });
 function finish(won) {
   const mode=scene, config=state.config, total=state.total;
-  const replay=()=>mode==="practice" ? startPractice(config.label,config.pool) : startBattle(config.includeAdvanced);
+  const replay=()=>mode==="practice" ? startPractice(config.label,config.pool,config.showGuide) : startBattle(config.includeAdvanced);
   closeHint(); stopAudio();
   state.waiting=true;
   if (!won) {
@@ -413,6 +431,7 @@ function tick(now) {
 document.addEventListener("visibilitychange",()=>{previousTime=performance.now(); if(document.hidden) audio.moan.pause();});
 menu();
 requestAnimationFrame(tick);
+
 
 
 
