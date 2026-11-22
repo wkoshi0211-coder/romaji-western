@@ -216,10 +216,48 @@ function positionTargets() {
   });
 }
 const keyboardRows = ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"];
+const fingerColors = ["#e47775","#948be5","#83c985","#f5c369","#f5c369","#83c985","#948be5","#e47775"];
+const homeKeys = "ASDFJKL;";
+const fingerNames = ["左手の小指","左手の薬指","左手の中指","左手の人差し指","右手の人差し指","右手の中指","右手の薬指","右手の小指"];
+const fingerZones = ["QAZ","WSX","EDC","RTFGVB","YUHJNM","IK","OL","P;'"];
+function fingerDiagram(value) {
+  const key = value.toUpperCase();
+  const active = fingerZones.findIndex(zone => zone.includes(key));
+  const home = homeKeys[active];
+  const label = fingerNames[active] + "で " + key + " を押す";
+  const layout = [["QWERTYUIOP",18],["ASDFGHJKL;'",32],["ZXCVBNM",54]];
+  const positions = new Map();
+  for (const [row,[keys,offset]] of layout.entries()) {
+    [...keys].forEach((letter,index) => positions.set(letter,[offset+index*47,30+row*42]));
+  }
+  const [tx,ty] = positions.get(key);
+  const [hx,hy] = positions.get(home);
+  const keys = [...positions].map(([letter,[x,y]]) => {
+    const finger = fingerZones.findIndex(zone => zone.includes(letter));
+    const current = letter === key;
+    return '<rect x="'+(x-20)+'" y="'+(y-17)+'" width="40" height="34" rx="5" fill="'+fingerColors[finger]+'" fill-opacity="'+(current?'1':'.22')+'" stroke="'+(current?'#fff4c8':'#a48b77')+'" stroke-width="'+(current?'3':'1')+'"/>';
+  }).join("");
+  const hands = [...homeKeys].map((letter,index) => {
+    const [x,y] = positions.get(letter);
+    const start = (index<4 ? 102 : 405) + (index%4-1.5)*16;
+    return '<path d="M '+start+' 171 Q '+x+' 136 '+x+' '+(y+8)+'" stroke="'+fingerColors[index]+'" stroke-width="'+(active===index?12:8)+'" opacity="'+(active===index?'.9':'.38')+'"/><circle cx="'+x+'" cy="'+(y+8)+'" r="6" fill="'+fingerColors[index]+'"/>';
+  }).join("");
+  const lettering = [...positions].map(([letter,[x,y]]) =>
+    '<text x="'+x+'" y="'+(y-1)+'" fill="'+(letter===key?'#25170e':'#fff4e5')+'">'+letter+'</text>').join("");
+  const arrow = home===key ? "" : '<path d="M '+hx+' '+(hy-4)+' L '+tx+' '+(ty+13)+'" stroke="#fff2ae" stroke-width="3" marker-end="url(#finger-arrow)"/>';
+  const subtitle = home===key ? label : letterMove();
+  function letterMove() { return fingerNames[active] + "を " + home + " から " + key + " へ"; }
+  return '<svg class="finger-diagram" xmlns="http://www.w3.org/2000/svg" viewBox="-7 0 535 218" role="img" aria-label="'+label+'"><defs><marker id="finger-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#fff2ae"/></marker></defs><rect x="-7" width="535" height="218" rx="12" fill="#2d211e"/><g stroke-linecap="round">'+keys+'<path d="M63 173 Q73 150 109 151 Q132 151 147 162 L172 172 Q179 184 158 186 H75 Z M356 173 Q361 152 402 151 Q427 151 449 168 L461 180 Q455 188 433 187 H364 Z" fill="#e5b78c" opacity=".46"/>'+hands+arrow+'</g><g text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="17" font-weight="700">'+lettering+'<text x="259" y="200" fill="#fff3d9">'+subtitle+'</text></g></svg>';
+}
+
 function drawKeys(value) {
   keyboard.hidden = false;
   keyboard.replaceChildren();
   keyboard.setAttribute("aria-label", "次に押すキー " + value.toUpperCase());
+  if (scene === "practice") {
+    keyboard.innerHTML = fingerDiagram(value);
+    return;
+  }
   for (const row of keyboardRows.concat(value==="'" ? ["'"] : [])) {
     const line=document.createElement("div"); line.className="keyrow";
     for (const key of row) {
@@ -375,6 +413,7 @@ function tick(now) {
 document.addEventListener("visibilitychange",()=>{previousTime=performance.now(); if(document.hidden) audio.moan.pause();});
 menu();
 requestAnimationFrame(tick);
+
 
 
 

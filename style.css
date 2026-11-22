@@ -14,3 +14,5 @@
 #game[data-scene=loss] #screen{position:absolute;inset:auto 0 5svh;display:grid;place-items:center;padding:.8rem}
 #game[data-scene=loss] .target.bite{top:41%!important;width:max(230vw,155vh)!important}
 
+.finger-diagram{display:block;width:min(27rem,82vw);height:auto;max-height:24svh}
+#game[data-scene=practice] #keyboard:has(.finger-diagram){padding:0}
