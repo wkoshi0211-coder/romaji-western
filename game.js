@@ -84,17 +84,14 @@ function spellings(target) {
   if (!next) return ["nn","n'","xn"];
   return /^[aeiouyn]/.test(roman[next][0]) ? ["nn","n'","xn"] : ["nn","n'","xn","n"];
 }
-function makePairs(pool, includeAdvanced) {
-  const started = new Set();
-  const candidates = shuffle(pool);
-  return Array.from({length:5}, (_, round) => {
-    const first = candidates.find(word => !started.has(word) && (!includeAdvanced || round%2===1 || advanced.includes(word)));
-    started.add(first);
-    const initials = new Set(roman[first.match(kana)[0]].map(value => value[0]));
-    const second = candidates.find(word => !started.has(word) && roman[word.match(kana)[0]].every(value => !initials.has(value[0])));
-    started.add(second);
-    return [first, second];
-  });
+const battleRounds = 5;
+const roundTime = 20000;
+function battleWords(includeAdvanced) {
+  const words = shuffle(includeAdvanced ? [...basic, ...advanced] : basic).slice(0, battleRounds);
+  if (includeAdvanced && !words.some(word => advanced.includes(word))) {
+    words[0] = shuffle(advanced)[0];
+  }
+  return words;
 }
 
 let state = null, scene = "menu", ticket = 0, fireTimer, flashTimer, previousTime = performance.now();
@@ -140,7 +137,7 @@ function practiceMenu() {
 function battleMenu() {
   reset(); setScene("setup");
   const initial = storage.get("romaji-advanced", "0") === "1";
-  screen.innerHTML = '<div class="panel"><h1>本番モード</h1><p>20秒以内に２体をたおそう。５セットでクリア！</p><h2>出題することば</h2><div class="choices options"><button id="basic">基本のことば</button><button id="advanced">濁音・拗音もあり</button></div><button id="start" class="primary">第１夜をはじめる</button></div>';
+  screen.innerHTML = '<div class="panel"><h1>本番モード</h1><p>ゾンビは１体ずつ。１体につき20秒、５体でクリア！</p><h2>出題することば</h2><div class="choices options"><button id="basic">基本のことば</button><button id="advanced">濁音・拗音もあり</button></div><button id="start" class="primary">第１夜をはじめる</button></div>';
   let includeAdvanced = initial;
   function select(value) {
     includeAdvanced = value;
@@ -164,8 +161,7 @@ function session(mode, config) {
 }
 function startPractice(label, pool) { session("practice", {label,pool}); }
 function startBattle(includeAdvanced) {
-  const pool = includeAdvanced ? [...basic,...advanced] : basic;
-  session("battle", {includeAdvanced, pairs:makePairs(pool,includeAdvanced), mobs:shuffle(names.map((_,i)=>i+1)).slice(0,10)});
+  session("battle", {includeAdvanced, words:battleWords(includeAdvanced), mobs:shuffle(names.map((_,i)=>i+1)).slice(0,battleRounds)});
 }
 function addTarget(target,i) {
   const node = document.createElement("div");
@@ -195,23 +191,22 @@ function nextWave() {
     status.textContent = state.config.label + "　" + state.total + " / 30";
   } else {
     const round=state.wave-1;
-    state.targets=state.config.pairs[round].map((word,index)=>track(word,state.config.mobs[2*round+index]));
-    status.textContent = "第１夜　" + state.wave + " / 5";
+    state.targets=[track(state.config.words[round], state.config.mobs[round])];
+    status.textContent = "第１夜　" + state.wave + " / " + battleRounds;
     play("moan");
   }
   state.targets.forEach(addTarget);
   positionTargets();
 }
 function positionTargets() {
-  const progress=Math.min(1,(state.elapsed/20000)**1.48);
+  const progress=Math.min(1,(state.elapsed/roundTime)**1.48);
   state.targets.forEach((target,i) => {
     let x,y,width;
     if (scene === "practice") {
       x=50+(i-(state.targets.length-1)/2)*22; y=62;
       width="clamp(4rem, 17vw, 13rem)";
     } else {
-      const lane=i===0 ? -1 : 1;
-      x=50+lane*(11+10*progress)+Math.sin(state.elapsed*.009+i)*(.34+.75*progress);
+      x=50+Math.sin(state.elapsed*.009+i)*(.34+.75*progress);
       y=52+35*progress+Math.sin(state.elapsed*.015+i)*(.26+.58*progress);
       width="min("+(7+24*progress)+"vw, "+(8+39*progress)+"vh)";
     }
@@ -312,7 +307,7 @@ function accept(target, matched) {
   const token=ticket;
   setTimeout(()=>{
     if (ticket!==token) return;
-    if (scene==="practice" ? state.total===30 : state.wave===5) finish(true);
+    if (scene==="practice" ? state.total===30 : state.wave===battleRounds) finish(true);
     else nextWave();
   },scene==="practice" ? 380 : 690);
 }
@@ -351,15 +346,22 @@ function finish(won) {
     setScene("loss");
     const token=ticket;
     setTimeout(()=>{ if(token===ticket) play("bite"); },270);
-    setTimeout(()=>{ if(token===ticket) result("ゲームオーバー","たおしたゾンビ　"+total+" / 10",replay); },590);
+    setTimeout(()=>{ if(token===ticket) result("ゲームオーバー","たおしたゾンビ　"+total+" / "+battleRounds,replay); },590);
   } else {
     reset(); setScene(mode==="battle" ? "clear":"setup");
-    result(mode==="battle" ? "クリア！":"練習クリア！",mode==="battle" ? "第１夜　たおしたゾンビ 10 / 10":"30文字 打てました！",replay);
+    result(mode==="battle" ? "クリア！":"練習クリア！",mode==="battle" ? "第１夜　たおしたゾンビ "+total+" / "+battleRounds:"30文字 打てました！",replay);
   }
 }
 function result(title,detail,replay) {
   const clear=scene==="clear";
   screen.innerHTML='<div class="'+(clear ? 'clear-actions' : 'panel result')+'"><h1>'+title+'</h1><p>'+detail+'</p><div class="choices"><button id="retry" class="primary">もう一回</button><button id="back">メニューへ</button></div></div>';
+  if (clear) {
+    const score = document.createElement("span");
+    score.className = "clear-score";
+    score.setAttribute("aria-hidden", "true");
+    score.textContent = battleRounds + " / " + battleRounds;
+    $(".clear-actions").append(score);
+  }
   $("#retry").onclick=replay; $("#back").onclick=menu;
   $("#retry").focus({preventScroll:true});
 }
@@ -372,7 +374,7 @@ function tick(now) {
       state.elapsed+=delta;
       if (before<9500 && state.elapsed>=9500) play("moan");
       positionTargets();
-      if (state.elapsed>=20000) finish(false);
+      if (state.elapsed>=roundTime) finish(false);
     }
   }
   requestAnimationFrame(tick);
@@ -380,6 +382,8 @@ function tick(now) {
 document.addEventListener("visibilitychange",()=>{previousTime=performance.now(); if(document.hidden) audio.moan.pause();});
 menu();
 requestAnimationFrame(tick);
+
+
 
 
 
