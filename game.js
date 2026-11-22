@@ -84,7 +84,7 @@ function spellings(target) {
   if (!next) return ["nn","n'","xn"];
   return /^[aeiouyn]/.test(roman[next][0]) ? ["nn","n'","xn"] : ["nn","n'","xn","n"];
 }
-const battleRounds = 5;
+const battleRounds = 10;
 const roundTime = 20000;
 function battleWords(includeAdvanced) {
   const words = shuffle(includeAdvanced ? [...basic, ...advanced] : basic).slice(0, battleRounds);
@@ -137,7 +137,7 @@ function practiceMenu() {
 function battleMenu() {
   reset(); setScene("setup");
   const initial = storage.get("romaji-advanced", "0") === "1";
-  screen.innerHTML = '<div class="panel"><h1>本番モード</h1><p>ゾンビは１体ずつ。１体につき20秒、５体でクリア！</p><h2>出題することば</h2><div class="choices options"><button id="basic">基本のことば</button><button id="advanced">濁音・拗音もあり</button></div><button id="start" class="primary">第１夜をはじめる</button></div>';
+  screen.innerHTML = '<div class="panel"><h1>本番モード</h1><p>ゾンビは１体ずつ。１体につき20秒、10体でクリア！</p><h2>出題することば</h2><div class="choices options"><button id="basic">基本のことば</button><button id="advanced">濁音・拗音もあり</button></div><button id="start" class="primary">第１夜をはじめる</button></div>';
   let includeAdvanced = initial;
   function select(value) {
     includeAdvanced = value;
@@ -355,13 +355,6 @@ function finish(won) {
 function result(title,detail,replay) {
   const clear=scene==="clear";
   screen.innerHTML='<div class="'+(clear ? 'clear-actions' : 'panel result')+'"><h1>'+title+'</h1><p>'+detail+'</p><div class="choices"><button id="retry" class="primary">もう一回</button><button id="back">メニューへ</button></div></div>';
-  if (clear) {
-    const score = document.createElement("span");
-    score.className = "clear-score";
-    score.setAttribute("aria-hidden", "true");
-    score.textContent = battleRounds + " / " + battleRounds;
-    $(".clear-actions").append(score);
-  }
   $("#retry").onclick=replay; $("#back").onclick=menu;
   $("#retry").focus({preventScroll:true});
 }
@@ -382,6 +375,7 @@ function tick(now) {
 document.addEventListener("visibilitychange",()=>{previousTime=performance.now(); if(document.hidden) audio.moan.pause();});
 menu();
 requestAnimationFrame(tick);
+
 
 
 
