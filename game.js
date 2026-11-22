@@ -35,7 +35,7 @@ for (const [head, prefixes] of Object.entries({
 }
 
 const names = "ベル係 ピアノ弾き 床屋 料理人 夜警 車掌 機関士 郵便配達員 駅馬車の御者 測量士 サボテンの園芸家 養蜂家 水くみ係 鍛冶屋 風車の修理屋 太鼓奏者 占い師 花火係 人形遣い ロデオの道化師".split(" ");
-const mouths=[[.473,.259],[.549,.282],[.494,.270],[.471,.305],[.479,.287],[.437,.259],[.548,.293],[.535,.253],[.511,.253],[.494,.299],[.453,.241],[.478,.276],[.519,.264],[.49,.264],[.476,.23],[.385,.287],[.453,.42],[.529,.385],[.53,.374],[.506,.328]];
+const mouths=[[0.47,0.255],[0.455,0.31],[0.48,0.282],[0.46,0.307],[0.47,0.278],[0.44,0.252],[0.49,0.292],[0.54,0.262],[0.51,0.253],[0.588,0.262],[0.52,0.243],[0.53,0.231],[0.53,0.264],[0.51,0.26],[0.535,0.238],[0.537,0.357],[0.578,0.243],[0.55,0.39],[0.56,0.373],[0.57,0.317]];
 const sprites = names.map((_,i) => { const image = new Image(); image.src = "mob-" + String(i+1).padStart(2,"0") + ".webp"; return image; });
 const audio = Object.fromEntries(["shot","moan","bite"].map(name => [name,new Audio("" + name + ".wav")]));
 Object.values(audio).forEach(sound => { sound.preload = "auto"; });
@@ -380,5 +380,6 @@ function tick(now) {
 document.addEventListener("visibilitychange",()=>{previousTime=performance.now(); if(document.hidden) audio.moan.pause();});
 menu();
 requestAnimationFrame(tick);
+
 
 

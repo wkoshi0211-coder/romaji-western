@@ -11,3 +11,5 @@
 #game[data-scene=loss] #screen{z-index:7}
 #game[data-scene=loss] #targets{z-index:2}
 
+#game[data-scene=loss] #screen{position:absolute;inset:auto 0 5svh;display:grid;place-items:center;padding:.8rem}
+#game[data-scene=loss] .target.bite{top:41%!important;width:max(230vw,155vh)!important}
