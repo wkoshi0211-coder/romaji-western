@@ -280,7 +280,10 @@ function refreshHint() {
   const target = persistent ? state.targets[0] : state?.hint;
   if (!target) { keyboard.hidden = true; return; }
   if (target.done) return;
-  const form = spellings(target).find(value => value.startsWith(state.pending));
+  const guideSpelling = persistent ? ({ち:"ti", ふ:"hu"})[target.units[target.index]] : undefined;
+  const form = guideSpelling?.startsWith(state.pending)
+    ? guideSpelling
+    : spellings(target).find(value => value.startsWith(state.pending));
   const key = form?.[state.pending.length];
   if (!key) return;
   if (persistent) {
@@ -431,6 +434,7 @@ function tick(now) {
 document.addEventListener("visibilitychange",()=>{previousTime=performance.now(); if(document.hidden) audio.moan.pause();});
 menu();
 requestAnimationFrame(tick);
+
 
 
 
