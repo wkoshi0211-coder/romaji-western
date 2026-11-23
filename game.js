@@ -227,6 +227,7 @@ function positionTargets() {
   });
 }
 const keyboardRows = ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"];
+const guideSpellings = {し:"si", ち:"ti", つ:"tu", ふ:"hu", じ:"zi", しゃ:"sya", ちゃ:"tya"};
 const fingerColors = ["#e47775","#948be5","#83c985","#f5c369","#f5c369","#83c985","#948be5","#e47775"];
 const homeKeys = "ASDFJKL;";
 const fingerNames = ["左手の小指","左手の薬指","左手の中指","左手の人差し指","右手の人差し指","右手の中指","右手の薬指","右手の小指"];
@@ -280,7 +281,7 @@ function refreshHint() {
   const target = persistent ? state.targets[0] : state?.hint;
   if (!target) { keyboard.hidden = true; return; }
   if (target.done) return;
-  const guideSpelling = persistent ? ({ち:"ti", つ:"tu", ふ:"hu"})[target.units[target.index]] : undefined;
+  const guideSpelling = persistent ? guideSpellings[target.units[target.index]] : undefined;
   const form = guideSpelling?.startsWith(state.pending)
     ? guideSpelling
     : spellings(target).find(value => value.startsWith(state.pending));
@@ -434,6 +435,7 @@ function tick(now) {
 document.addEventListener("visibilitychange",()=>{previousTime=performance.now(); if(document.hidden) audio.moan.pause();});
 menu();
 requestAnimationFrame(tick);
+
 
 
 
